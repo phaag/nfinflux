@@ -42,6 +42,7 @@ import (
 	"os/signal"
 	"time"
 	"syscall"
+	"strconv"
 
 	"github.com/influxdata/influxdb-client-go/v2"
 )
@@ -96,36 +97,33 @@ func (influxDB *influxDBConf) insertStat() {
         }
     }()
 
-	// write data point
-	p := influxdb2.NewPoint("stat",
-	map[string]string{"unit": "temperature"},
-	map[string]interface{}{"avg": 24.5, "max": 45},
-	time.Now())
-	// write point asynchronously
-	writeAPI.WritePoint(p)
 	// create point using fluent style
 	mutex.Lock()
-	p = influxdb2.NewPointWithMeasurement("stat").
-	AddTag("collector", "nfcapd").
-	AddTag("version", "1.7-beta").
-	AddTag("ident", metric.ident).
-	AddField("flows_tcp", metric.numFlows_tcp).
-	AddField("flows_udp", metric.numFlows_udp).
-	AddField("flows_icmp", metric.numFlows_icmp).
-	AddField("flows_other", metric.numFlows_other).
-	AddField("packets_tcp", metric.numPackets_tcp).
-	AddField("packets_udp", metric.numPackets_udp).
-	AddField("packets_icmp", metric.numPackets_icmp).
-	AddField("packets_other", metric.numPackets_other).
-	AddField("bytes_tcp", metric.numBytes_tcp).
-	AddField("bytes_udp", metric.numBytes_udp).
-	AddField("bytes_icmp", metric.numBytes_icmp).
-	AddField("bytes_other", metric.numBytes_other).
-	SetTime(time.Now())
+	for ident, metrics := range metricList {
+		for _, metric := range metrics {
+			p := influxdb2.NewPointWithMeasurement("stat").
+			AddTag("collector", "nfcapd").
+			AddTag("version", "1.7-beta").
+			AddTag("ident", ident).
+			AddTag("exporterID", strconv.FormatUint(metric.exporterID, 10)).
+			AddField("flows_tcp", metric.numFlows_tcp).
+			AddField("flows_udp", metric.numFlows_udp).
+			AddField("flows_icmp", metric.numFlows_icmp).
+			AddField("flows_other", metric.numFlows_other).
+			AddField("packets_tcp", metric.numPackets_tcp).
+			AddField("packets_udp", metric.numPackets_udp).
+			AddField("packets_icmp", metric.numPackets_icmp).
+			AddField("packets_other", metric.numPackets_other).
+			AddField("bytes_tcp", metric.numBytes_tcp).
+			AddField("bytes_udp", metric.numBytes_udp).
+			AddField("bytes_icmp", metric.numBytes_icmp).
+			AddField("bytes_other", metric.numBytes_other).
+			SetTime(time.Now())
+			// write point asynchronously
+			writeAPI.WritePoint(p)
+		}
+	}
 	mutex.Unlock()
-	// write point asynchronously
-	writeAPI.WritePoint(p)
-
 	// Flush writes
 	writeAPI.Flush()
 }
