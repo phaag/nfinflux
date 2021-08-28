@@ -12,7 +12,7 @@ This experimental exporter exposes counters for flows/packets and bytes per prot
     AddTag("collector", "nfcapd").
     AddTag("version", "1.7-beta").
     AddTag("ident", metric.ident).
-    AddTag(exporterID", exporterID).
+    AddTag("exporterID", exporterID).
     AddField("flows_tcp", metric.numFlows_tcp).
     AddField("flows_udp", metric.numFlows_udp).
     AddField("flows_icmp", metric.numFlows_icmp).
