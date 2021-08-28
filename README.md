@@ -4,7 +4,7 @@ This is a prototype exporter for nfdump. It sends periodic updates to an InfluxD
 
 It's purpose is to play and experiment with nfdump netflow data and InfluxDB/Grafana to build a new graphical UI as a repacement for aging NfSen.
 
-This experimental exporter exposes counters for flows/packets and bytes per protocol (tcp/udp/icmp/other) and the source identifier from the nfcapd collector. (currently hardwired "live"). Updates are sent every 30s.
+This experimental exporter exposes counters for flows/packets and bytes per protocol (tcp/udp/icmp/other) and the source identifier from the nfcapd collector. (currently hardwired "live"). Updates are sent every 30s. Multiple collectors (ident) with multiple exporters each may send metrics to the exporter.
 
 ## Metrics:
 
