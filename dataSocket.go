@@ -1,31 +1,31 @@
-/*  
+/*
  *  Copyright (c) 2021, Peter Haag
  *  All rights reserved.
- *  
- *  Redistribution and use in source and binary forms, with or without 
+ *
+ *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
- *  
- *   * Redistributions of source code must retain the above copyright notice, 
+ *
+ *   * Redistributions of source code must retain the above copyright notice,
  *	 this list of conditions and the following disclaimer.
- *   * Redistributions in binary form must reproduce the above copyright notice, 
- *	 this list of conditions and the following disclaimer in the documentation 
+ *   * Redistributions in binary form must reproduce the above copyright notice,
+ *	 this list of conditions and the following disclaimer in the documentation
  *	 and/or other materials provided with the distribution.
- *   * Neither the name of the author nor the names of its contributors may be 
- *	 used to endorse or promote products derived from this software without 
+ *   * Neither the name of the author nor the names of its contributors may be
+ *	 used to endorse or promote products derived from this software without
  *	 specific prior written permission.
- *  
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
- *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
- *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
- *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
- *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
- *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
- *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
- *  
+ *
  */
 
 /*
@@ -69,9 +69,9 @@ import "C"
 import (
 	"encoding/binary"
 	"fmt"
-	"os"
 	"log"
 	"net"
+	"os"
 	"unsafe"
 )
 
@@ -83,27 +83,27 @@ type nfsenMetric struct {
 	//  exporter ID
 	exporterID uint64
 	// flow stat
-	numFlows_tcp uint64
-	numFlows_udp uint64
-	numFlows_icmp uint64
+	numFlows_tcp   uint64
+	numFlows_udp   uint64
+	numFlows_icmp  uint64
 	numFlows_other uint64
 	// bytes stat
-	numBytes_tcp uint64
-	numBytes_udp uint64
-	numBytes_icmp uint64
+	numBytes_tcp   uint64
+	numBytes_udp   uint64
+	numBytes_icmp  uint64
 	numBytes_other uint64
 	// packet stat
-	numPackets_tcp uint64
-	numPackets_udp uint64
-	numPackets_icmp uint64
+	numPackets_tcp   uint64
+	numPackets_udp   uint64
+	numPackets_icmp  uint64
 	numPackets_other uint64
 }
 
 var metricList map[string]map[uint64]nfsenMetric
 
 type socketConf struct {
-	socketPath	string
-	listener	net.Listener
+	socketPath string
+	listener   net.Listener
 }
 
 func New(socketPath string) *socketConf {
@@ -141,7 +141,7 @@ func processStat(conn net.Conn) {
 	readBuf := make([]byte, 65536)
 
 	dataLen, err := conn.Read(readBuf)
-	if err != nil || dataLen == 0{
+	if err != nil || dataLen == 0 {
 		fmt.Printf("Socket read error: %v\n", err)
 		return
 	}
@@ -152,42 +152,42 @@ func processStat(conn net.Conn) {
 
 	// version := readBuf[1]
 	// payloadSize := int(binary.LittleEndian.Uint16(readBuf[2:4]))
-	numMetrics	:= int(binary.LittleEndian.Uint16(readBuf[4:6]))
+	numMetrics := int(binary.LittleEndian.Uint16(readBuf[4:6]))
 	// collectorID	:= int(binary.LittleEndian.Uint64(readBuf[8:16]))
 	// uptime		:= int(binary.LittleEndian.Uint64(readBuf[16:24]))
 	ilen := 0
 	for i := 0; readBuf[24+i] != 0; i++ {
 		ilen++
 	}
-	ident := string(readBuf[24:24+ilen])
+	ident := string(readBuf[24 : 24+ilen])
 
 	if _, ok := metricList[ident]; ok == false {
 		metricList[ident] = make(map[uint64]nfsenMetric)
 	}
-/*
-	fmt.Printf("Message size: %d, payload size: %d version: %d, numMetrics: %d\n",
-		dataLen, payloadSize, version, numMetrics);
-	fmt.Printf("Collector: %d, uptime: %d, ident: %s\n",
-		collectorID, uptime, ident)
-*/
+	/*
+		fmt.Printf("Message size: %d, payload size: %d version: %d, numMetrics: %d\n",
+			dataLen, payloadSize, version, numMetrics);
+		fmt.Printf("Collector: %d, uptime: %d, ident: %s\n",
+			collectorID, uptime, ident)
+	*/
 	var metric nfsenMetric
 	offset := 152
 	for num := 0; num < numMetrics; num++ {
 		var s *C.metric_record_t = (*C.metric_record_t)(unsafe.Pointer(&readBuf[offset]))
 		metric.exporterID = uint64(s.exporterID)
-		metric.numFlows_tcp   = uint64(s.numflows_tcp)
-		metric.numFlows_udp   = uint64(s.numflows_udp)
-		metric.numFlows_icmp  = uint64(s.numflows_icmp)
+		metric.numFlows_tcp = uint64(s.numflows_tcp)
+		metric.numFlows_udp = uint64(s.numflows_udp)
+		metric.numFlows_icmp = uint64(s.numflows_icmp)
 		metric.numFlows_other = uint64(s.numflows_other)
 
-		metric.numBytes_tcp   = uint64(s.numbytes_tcp)
-		metric.numBytes_udp   = uint64(s.numbytes_udp)
-		metric.numBytes_icmp  = uint64(s.numbytes_icmp)
+		metric.numBytes_tcp = uint64(s.numbytes_tcp)
+		metric.numBytes_udp = uint64(s.numbytes_udp)
+		metric.numBytes_icmp = uint64(s.numbytes_icmp)
 		metric.numBytes_other = uint64(s.numbytes_other)
 
-		metric.numPackets_tcp   = uint64(s.numpackets_tcp)
-		metric.numPackets_udp   = uint64(s.numpackets_udp)
-		metric.numPackets_icmp  = uint64(s.numpackets_icmp)
+		metric.numPackets_tcp = uint64(s.numpackets_tcp)
+		metric.numPackets_udp = uint64(s.numpackets_udp)
+		metric.numPackets_icmp = uint64(s.numpackets_icmp)
 		metric.numPackets_other = uint64(s.numpackets_other)
 
 		mutex.Lock()
@@ -208,7 +208,7 @@ func (socket *socketConf) Run() {
 			if err != nil {
 				log.Fatal("accept error:", err)
 			}
-			// fmt.Printf("New connection\n")
+			fmt.Printf("New connection\n")
 			go processStat(conn)
 		}
 	}()
