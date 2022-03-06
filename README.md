@@ -1,12 +1,12 @@
 # Nfdump InfluxDB Exporter
 
-**nfinflux** is an data iinterface between [nfdump](https://github.com/phaag/nfdump/tree/unicorn) and influxDB.
+**nfinflux** is a data iinterface between [nfdump](https://github.com/phaag/nfdump/tree/unicorn) and influxDB.
 
 nfinflux has two operation modes:
 
 1. Continous mode:
-   Creates an UNIX sockets and waits for metric data being sent by any number of nfcapd, sfcapd or nfpcapd collectors.
-2. Import mode
+   Creates a UNIX sockets and waits for metric data being sent by any number of nfcapd, sfcapd or nfpcapd collectors.
+2. Import mode:
    Take any number of pre-collected nfcapd files and imports the stat info into influxDB
 
 In both modes, the same data is imported. See below for a more details
@@ -39,13 +39,13 @@ The metric records contains the rates/s for flows, packets and bytes.  4 points 
 
 ## Installation:
 
-Make sure you have at least golang 1.17 installed on your system. 
+nfinflux is written in golang. Make sure you have at least golang 1.17 installed on your system. 
 
 1. Download the master branch.
 2. go mod tidy
 3. go build
 
-./nfinflux is built in the current directory.
+nfinflux is built in the current directory.
 
 ## Usage:
 
@@ -69,7 +69,9 @@ Usage of ./nfinflux:
     	time interval in seconds of flow file (default 300)
 ```
 
-If **-socket** is given, the interactive mode is active. If any **files** and/or **directories** are given as extra arguments, nfinflux runs in import mode and imports the stat records of any nfcapd files found recursively.
+Continous mode: If **-socket** is given, the continous mode is active. It opens the requested socket and listen for incoming messages, which are are converted into influxDB points ant sent to the InfluxDB.
+
+Import mode: If any **files** and/or **directories** are given as extra arguments, nfinflux runs in import mode and imports the stat records of any nfcapd files found recursively in directories. It ends after the successful import.
 
 ### Examples:
 
@@ -82,7 +84,7 @@ Continous mode:
 ./sfcapd -l /sflowdir -S2 -y -m /tmp/nfdump
 ````
 
-Runs nfinflux and nfcapd to collect continously metric data.
+Runs nfinflux and nfcapd, sfcapd to collect and import continously metric data.
 
 Import mode:
 
@@ -91,22 +93,23 @@ Import mode:
 ./nfinflux -host http://127.0.0.1:8086 -org MyOrg -bucket Flows -token <token> /flowdir/2022
 ```
 
-Imports the stats of a single netflow file or recursively all netflow files in /flowdir/2022. Usually nfcapd.xx files are collected each 300s interval. The timestamp is taken from the file name and the rates calculated by assuming 300s intervals. If you collected your flows with a different interval, add the proper **-twin** option.
+Imports the stats of a single netflow file or recursively all netflow files in /flowdir/2022. Multiple files or directories may be given as extra arguments. 
+Usually nfcapd.xx files are collected each 300s interval. The timestamp is taken from the file name and the rates calculated by assuming a 300s interval. If you collected your flows in a different interval, add the proper **-twin** option.
 
 ### InfluxDB
 
-nfinflux uses the InfluxDB api v2.0, therefore requires an InfluxDB > v2.0.
+nfinflux uses the InfluxDB api v2.0, therefore requires an InfluxDB version >= v2.0.
 
-For any mode, valid credentials (host/token/org) for the InfluxDB are required. nfinflux also supports environment variables **INFLUXDB_HOST** and **INFLUXDB_TOKEN**. The **-host** and **-token** command line arguments overwrite the env variables.
+For any operation mode, valid credentials (host/token/org) for the InfluxDB are required. nfinflux also supports environment variables **INFLUXDB_HOST** and **INFLUXDB_TOKEN**. The **-host** and **-token** command line arguments overwrite the env variables.
 
 #### Bucket
 
 Alle data is imported into the bucket given with **-bucket**. There are two additional command line options:
 
-**-create**: Creates the bucket is it does not exist.
+**-create**: Creates the bucket if it does not exist.
 **-delete**: Deletes the bucket if it exists and re-creates it.
 
-Both options need a token with appropriate authorization rights. (Allow read/write for given org).
+Both options need a token with appropriate authorization rights. (Allow read/write for given org). Otherwise a token to write/write the bucket is fine.
 
 A proper token needs to be created in the InfluxDB interface. The organisation needs already to exist.
 
