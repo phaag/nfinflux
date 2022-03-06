@@ -1,4 +1,4 @@
-# Nfdump InfluxDB Exporter
+# nfinflux - an nfdump InfluxDB interface
 
 **nfinflux** is a data iinterface between [nfdump](https://github.com/phaag/nfdump/tree/unicorn) and influxDB.
 
