@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2021, Peter Haag
+ *  Copyright (c) 2022, Peter Haag
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -35,11 +35,22 @@
  *
  */
 
-package main
+package nfsocket
 
 /*
 
 #include <stdint.h>
+
+typedef struct message_header_s {
+    char prefix;
+    uint8_t version;
+    uint16_t size;
+    uint16_t numMetrics;
+    uint16_t interval;
+    uint64_t timeStamp;
+    uint64_t uptime;
+    char ident[128];
+} message_header_t;
 
 typedef struct metric_record_s {
 	// Ident
@@ -62,6 +73,7 @@ typedef struct metric_record_s {
 	uint64_t numpackets_other;
 } metric_record_t;
 
+const int header_size = sizeof(message_header_t);
 const int record_size = sizeof(metric_record_t);
 */
 import "C"
@@ -69,71 +81,54 @@ import "C"
 import (
 	"encoding/binary"
 	"fmt"
-	"log"
 	"net"
 	"os"
+	"time"
 	"unsafe"
 )
 
 const packetPrefix byte = '@'
+const packetVersion byte = 1
 
+var headerSize int = int(C.header_size)
 var metricSize int = int(C.record_size)
 
-type nfsenMetric struct {
-	//  exporter ID
-	exporterID uint64
-	// flow stat
-	numFlows_tcp   uint64
-	numFlows_udp   uint64
-	numFlows_icmp  uint64
-	numFlows_other uint64
-	// bytes stat
-	numBytes_tcp   uint64
-	numBytes_udp   uint64
-	numBytes_icmp  uint64
-	numBytes_other uint64
-	// packet stat
-	numPackets_tcp   uint64
-	numPackets_udp   uint64
-	numPackets_icmp  uint64
-	numPackets_other uint64
-}
-
-var metricList map[string]map[uint64]nfsenMetric
-
-type socketConf struct {
+type SocketConf struct {
 	socketPath string
 	listener   net.Listener
+	metricChan chan metricInfo
 }
 
-func New(socketPath string) *socketConf {
-	conf := new(socketConf)
+func New(socketPath string, metricChan chan metricInfo) *SocketConf {
+	conf := new(SocketConf)
 	conf.socketPath = socketPath
-	metricList = make(map[string]map[uint64]nfsenMetric)
+	conf.metricChan = metricChan
 	return conf
 }
 
-func (socket *socketConf) Open() error {
+func (conf *SocketConf) Open() error {
 
-	if err := os.RemoveAll(socket.socketPath); err != nil {
+	if err := os.RemoveAll(conf.socketPath); err != nil {
 		return err
 	}
-	listener, err := net.Listen("unix", socket.socketPath)
+	listener, err := net.Listen("unix", conf.socketPath)
 	if err != nil {
 		return err
 	}
-	socket.listener = listener
+	conf.listener = listener
 	return nil
 
 } // End of Open
 
-func (socket *socketConf) Close() error {
+func (conf *SocketConf) Close() error {
 
-	return socket.listener.Close()
+	err := conf.listener.Close()
+	os.Remove(conf.socketPath)
+	return err
 
 } // End of Close
 
-func processStat(conn net.Conn) {
+func processStat(conf *SocketConf, conn net.Conn) {
 
 	defer conn.Close()
 
@@ -145,71 +140,96 @@ func processStat(conn net.Conn) {
 		fmt.Printf("Socket read error: %v\n", err)
 		return
 	}
+
+	// message prefix
 	if readBuf[0] != packetPrefix {
-		fmt.Printf("Message prefix error - got %u\n", readBuf[0])
+		fmt.Printf("Message prefix error - got %d\n", readBuf[0])
 		return
 	}
 
-	// version := readBuf[1]
-	// payloadSize := int(binary.LittleEndian.Uint16(readBuf[2:4]))
+	// version
+	if readBuf[1] != packetVersion {
+		fmt.Printf("Message prefix error - unknow version %d\n", readBuf[1])
+		return
+	}
+
+	payloadSize := int(binary.LittleEndian.Uint16(readBuf[2:4]))
+	if dataLen < payloadSize {
+		fmt.Printf("Message size error - received %d, announced %d\n", dataLen, payloadSize)
+		return
+	}
+
 	numMetrics := int(binary.LittleEndian.Uint16(readBuf[4:6]))
-	// collectorID	:= int(binary.LittleEndian.Uint64(readBuf[8:16]))
-	// uptime		:= int(binary.LittleEndian.Uint64(readBuf[16:24]))
 	ilen := 0
 	for i := 0; readBuf[24+i] != 0; i++ {
 		ilen++
 	}
 	ident := string(readBuf[24 : 24+ilen])
+	timestamp := int(binary.LittleEndian.Uint64(readBuf[8:16]))
 
-	if _, ok := metricList[ident]; ok == false {
-		metricList[ident] = make(map[uint64]nfsenMetric)
-	}
 	/*
+		interval	:= int(binary.LittleEndian.Uint64(readBuf[6:8]))
+		timestamp	:= int(binary.LittleEndian.Uint64(readBuf[8:16]))
+		uptime		:= int(binary.LittleEndian.Uint64(readBuf[16:24]))
 		fmt.Printf("Message size: %d, payload size: %d version: %d, numMetrics: %d\n",
 			dataLen, payloadSize, version, numMetrics);
-		fmt.Printf("Collector: %d, uptime: %d, ident: %s\n",
-			collectorID, uptime, ident)
+		fmt.Printf("Time(ms): %d, interval: %d, uptime: %d, ident: %s\n",
+			timestamp, interval, uptime, ident)
 	*/
-	var metric nfsenMetric
-	offset := 152
+
+	offset := headerSize
 	for num := 0; num < numMetrics; num++ {
+		availableSize := dataLen - offset
+		if availableSize < metricSize {
+			fmt.Printf("Message size error - left %d, expected %d\n", availableSize, metricSize)
+			return
+		}
 		var s *C.metric_record_t = (*C.metric_record_t)(unsafe.Pointer(&readBuf[offset]))
-		metric.exporterID = uint64(s.exporterID)
-		metric.numFlows_tcp = uint64(s.numflows_tcp)
-		metric.numFlows_udp = uint64(s.numflows_udp)
-		metric.numFlows_icmp = uint64(s.numflows_icmp)
-		metric.numFlows_other = uint64(s.numflows_other)
+		metric := metricInfo{}
+		metric.exporter = int(s.exporterID)
+		metric.timestamp = uint64(timestamp)
+		metric.ident = ident
 
-		metric.numBytes_tcp = uint64(s.numbytes_tcp)
-		metric.numBytes_udp = uint64(s.numbytes_udp)
-		metric.numBytes_icmp = uint64(s.numbytes_icmp)
-		metric.numBytes_other = uint64(s.numbytes_other)
+		metric.stat.NumflowsTcp = uint64(s.numflows_tcp)
+		metric.stat.NumflowsUdp = uint64(s.numflows_udp)
+		metric.stat.NumflowsIcmp = uint64(s.numflows_icmp)
+		metric.stat.NumflowsOther = uint64(s.numflows_other)
 
-		metric.numPackets_tcp = uint64(s.numpackets_tcp)
-		metric.numPackets_udp = uint64(s.numpackets_udp)
-		metric.numPackets_icmp = uint64(s.numpackets_icmp)
-		metric.numPackets_other = uint64(s.numpackets_other)
+		metric.stat.NumbytesTcp = uint64(s.numbytes_tcp)
+		metric.stat.NumbytesUdp = uint64(s.numbytes_udp)
+		metric.stat.NumbytesIcmp = uint64(s.numbytes_icmp)
+		metric.stat.NumbytesOther = uint64(s.numbytes_other)
 
-		mutex.Lock()
-		metricList[ident][metric.exporterID] = metric
-		mutex.Unlock()
+		metric.stat.NumpacketsTcp = uint64(s.numpackets_tcp)
+		metric.stat.NumpacketsUdp = uint64(s.numpackets_udp)
+		metric.stat.NumpacketsIcmp = uint64(s.numpackets_icmp)
+		metric.stat.NumpacketsOther = uint64(s.numpackets_other)
+
+		fmt.Printf("Received metric for '%s', exporter: %d, at %v\n", ident, metric.exporter, time.UnixMilli(int64(timestamp)))
+		conf.metricChan <- metric
 		offset += metricSize
 	}
 
 } // end of processStat
 
-func (socket *socketConf) Run() {
+func (conf *SocketConf) Run(done chan bool) {
 
 	go func() {
 		for {
 			// Accept new connections from nfcapd collectors and
 			// dispatching them to goroutine processStat
-			conn, err := socket.listener.Accept()
-			if err != nil {
-				log.Fatal("accept error:", err)
+			conn, err := conf.listener.Accept()
+			if err == nil {
+				go processStat(conf, conn)
+			} else {
+				select {
+				case <-done:
+					close(conf.metricChan)
+					return
+				default:
+					fmt.Printf("Accept() error: %v\n", err)
+				}
 			}
-			fmt.Printf("New connection\n")
-			go processStat(conn)
 		}
 	}()
 
