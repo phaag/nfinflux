@@ -1,6 +1,6 @@
 # nfinflux - an nfdump InfluxDB interface
 
-**nfinflux** is a data iinterface between [nfdump](https://github.com/phaag/nfdump/tree/unicorn) and influxDB.
+**nfinflux** is a data interface between [nfdump](https://github.com/phaag/nfdump/tree/unicorn) and influxDB.
 
 nfinflux has two operation modes:
 
@@ -9,9 +9,9 @@ nfinflux has two operation modes:
 2. Import mode:
    Take any number of pre-collected nfcapd files and imports the stat info into influxDB
 
-In both modes, the same data is imported. See below for a more details
+In both modes, the same type of data is imported. See below for a more details
 
-The collector exposes counters for flows/packets and bytes per protocol (tcp/udp/icmp/other) and the source identifier from the respective exporter. Updates are sent by default every minute (60s).  Multiple collectors (ident) with multiple exporters may send metrics to **nfinflux**.
+The collector exposes rate counters for flows/packets and bytes per protocol (tcp/udp/icmp/other) and the source identifier from the respective exporter. Updates are sent by default every minute (60s).  Multiple collectors (ident) with multiple exporters may send metrics to **nfinflux**.
 
 ## Metrics:
 
@@ -22,9 +22,9 @@ For each protocol **tcp**, **udp**, **icmp** and **other** a metric record is ad
 	p := write.NewPoint(
 		"stat",
 		map[string]string{
-			"channel":  ident,
+			"channel" : ident,
 			"exporter": exporterID,
-			"proto":    "tcp",
+			"proto"   : "tcp",
 		},
 		map[string]interface{}{
 			"fps": statRecord.NumflowsTcp,
