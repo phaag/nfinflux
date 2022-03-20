@@ -182,7 +182,7 @@ func (nfFile *NfFile) readAppendix() error {
 			case TYPE_IDENT:
 				ident := make([]byte, record.Size-4)
 				binary.Read(b, binary.LittleEndian, &ident)
-				nfFile.ident = string(ident)
+				nfFile.ident = string(ident[:])
 			case TYPE_STAT:
 				// fmt.Printf("Read stat: %d\n", unsafe.Sizeof(nfFile.StatRecord))
 				binary.Read(b, binary.LittleEndian, &nfFile.StatRecord)

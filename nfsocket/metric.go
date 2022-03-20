@@ -49,11 +49,11 @@ typedef struct message_header_s {
     uint16_t interval;
     uint64_t timeStamp;
     uint64_t uptime;
-    char ident[128];
 } message_header_t;
 
 typedef struct metric_record_s {
 	// Ident
+	char ident[128];
 	uint64_t	exporterID; // 32bit: exporter_id:16 engineType:8 engineID:*
 
 	// flow stat
@@ -160,11 +160,6 @@ func processStat(conf *SocketConf, conn net.Conn) {
 	}
 
 	numMetrics := int(binary.LittleEndian.Uint16(readBuf[4:6]))
-	ilen := 0
-	for i := 0; readBuf[24+i] != 0; i++ {
-		ilen++
-	}
-	ident := string(readBuf[24 : 24+ilen])
 	timestamp := int(binary.LittleEndian.Uint64(readBuf[8:16]))
 
 	/*
@@ -186,6 +181,9 @@ func processStat(conf *SocketConf, conn net.Conn) {
 		}
 		var s *C.metric_record_t = (*C.metric_record_t)(unsafe.Pointer(&readBuf[offset]))
 		metric := metricInfo{}
+
+		ident := C.GoString(&s.ident[0])
+
 		metric.exporter = int(s.exporterID)
 		metric.timestamp = uint64(timestamp)
 		metric.ident = ident
