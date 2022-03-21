@@ -168,14 +168,14 @@ func (influxDB *InfluxDBConf) InsertStat(when time.Time, ident string, exporterI
 	p := write.NewPoint(
 		"stat",
 		map[string]string{
-			"channel":  ident,
-			"exporter": exporterID,
-			"proto":    "tcp",
+			"channel": ident,
+			// "exporter": exporterID,
+			"proto": "tcp",
 		},
 		map[string]interface{}{
-			"fps": statRecord.NumflowsTcp,
-			"pps": statRecord.NumpacketsTcp,
-			"bps": statRecord.NumbytesTcp,
+			"flows":   statRecord.NumflowsTcp,
+			"packets": statRecord.NumpacketsTcp,
+			"bytes":   statRecord.NumbytesTcp,
 		},
 		when)
 	writeAPI.WritePoint(p)
@@ -183,14 +183,14 @@ func (influxDB *InfluxDBConf) InsertStat(when time.Time, ident string, exporterI
 	p = write.NewPoint(
 		"stat",
 		map[string]string{
-			"channel":  ident,
-			"exporter": exporterID,
-			"proto":    "udp",
+			"channel": ident,
+			// "exporter": exporterID,
+			"proto": "udp",
 		},
 		map[string]interface{}{
-			"fps": statRecord.NumflowsUdp,
-			"pps": statRecord.NumpacketsUdp,
-			"bps": statRecord.NumbytesUdp,
+			"flows":   statRecord.NumflowsUdp,
+			"packets": statRecord.NumpacketsUdp,
+			"bytes":   statRecord.NumbytesUdp,
 		},
 		when)
 	writeAPI.WritePoint(p)
@@ -198,14 +198,14 @@ func (influxDB *InfluxDBConf) InsertStat(when time.Time, ident string, exporterI
 	p = write.NewPoint(
 		"stat",
 		map[string]string{
-			"channel":  ident,
-			"exporter": exporterID,
-			"proto":    "icmp",
+			"channel": ident,
+			//		"exporter": exporterID,
+			"proto": "icmp",
 		},
 		map[string]interface{}{
-			"fps": statRecord.NumflowsIcmp,
-			"pps": statRecord.NumpacketsIcmp,
-			"bps": statRecord.NumbytesIcmp,
+			"flows":   statRecord.NumflowsIcmp,
+			"packets": statRecord.NumpacketsIcmp,
+			"bytes":   statRecord.NumbytesIcmp,
 		},
 		when)
 	writeAPI.WritePoint(p)
@@ -213,14 +213,14 @@ func (influxDB *InfluxDBConf) InsertStat(when time.Time, ident string, exporterI
 	p = write.NewPoint(
 		"stat",
 		map[string]string{
-			"channel":  ident,
-			"exporter": exporterID,
-			"proto":    "other",
+			"channel": ident,
+			// "exporter": exporterID,
+			"proto": "other",
 		},
 		map[string]interface{}{
-			"fps": statRecord.NumflowsOther,
-			"pps": statRecord.NumpacketsOther,
-			"bps": statRecord.NumbytesOther,
+			"flows":   statRecord.NumflowsOther,
+			"packets": statRecord.NumpacketsOther,
+			"bytes":   statRecord.NumbytesOther,
 		},
 		when)
 	writeAPI.WritePoint(p)
