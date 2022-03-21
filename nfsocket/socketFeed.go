@@ -54,7 +54,7 @@ func runFeeder(influxDB *influx.InfluxDBConf, bucket string, metricChan chan met
 	influxDB.StartWrite(bucket)
 	for metricRecord := range metricChan {
 		influxDB.InsertStat(time.UnixMilli(int64(metricRecord.timestamp)), metricRecord.ident, strconv.Itoa(metricRecord.exporter), metricRecord.stat)
-		fmt.Printf("Insert stat for '%s', exporter: %d, at %v\n", metricRecord.ident, metricRecord.exporter, time.UnixMilli(int64(metricRecord.timestamp)))
+		fmt.Printf("Insert stat for '%s', at %v\n", metricRecord.ident, time.UnixMilli(int64(metricRecord.timestamp)))
 	}
 	influxDB.EndWrite()
 	fmt.Printf("Exit influx feeder\n")
